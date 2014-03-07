@@ -11,40 +11,52 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
 XPCOMUtils.defineLazyGetter(myServices, 'as', function(){ return Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService) });
 
+var addedListeners = [];
+
 function console() {
 	return Services.appShell.hiddenDOMWindow.console;
 }
 
- var selectionListener = {
-   timeout: 0,
-   timeoutWin: 0,
-   notifySelectionChanged: function(doc, sel, reason)
+
+
+function selectionListener(win) {
+	this.timeout = 0;
+	this.win = 0;
+	this._editors = [];
+	this._stateListeners = [];
+   this.notifySelectionChanged = function(doc, sel, reason)
    {
 		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) {
 			
 			return;
 		}
-		
-       if (!this.timeout) {
-			this.timeoutWin = doc.defaultView;
-           this.timeout = doc.defaultView.setTimeout(function() {
+
+		var postTimeout = function() {
                //console.log('notifySelectionChanged','doc=',doc,'sel=',sel,'reason=',reason);
-			   hiliteAllSel(doc.defaultView, sel.toString());
+			   hiliteAllSel(this.win, sel.toString(), this._editors);
                this.timeout = 0;
-           }, 1000);
+           }		
+       if (this.timeout === 0) {
+			this.win = doc.defaultView;
+			console().log('set this.win',this.win,'doc.defaultView=',doc.defaultView);
+           this.timeout = this.win.setTimeout(postTimeout.bind(this), 1000);
        } else {
-			this.timeoutWin.clearTimeout(this.timeout);
-           this.timeoutWin.setTimeout(function() {
-               //console.log('notifySelectionChanged','doc=',doc,'sel=',sel,'reason=',reason);
-			   hiliteAllSel(doc.defaultView, sel.toString());
-               this.timeout = 0;
-           }, 1000);
+			this.win.clearTimeout(this.timeout);
+           this.win.setTimeout(postTimeout.bind(this), 1000);
 	   }
    }
+	
+}
+/*
+ var selectionListener = {
+   timeout: 0,
+   timeoutWin: 0,
+
  }
+ */
 /********************************************/
 //hilite all stuff
- function hiliteAllSel(win, text) {
+ function hiliteAllSel(win, text, _editors) {
 	//win should be top level window, will make it top if the top isnt passed
 	//should be tab windows, so no chrome windows
 	win = win.top;
@@ -72,6 +84,16 @@ var ctrler = _getSelectionController(win);
 ////unighlight alll
 let sel = ctrler.getSelection(Ci.nsISelectionController.SELECTION_FIND);
 sel.removeAllRanges();
+if (_editors) {
+for (let x = _editors.length - 1; x >= 0; --x) {
+if (_editors[x].document == doc) {
+sel = _editors[x].selectionController.getSelection(Ci.nsISelectionController.SELECTION_FIND);
+sel.removeAllRanges();
+// We don't need to listen to this editor any more
+//this._unhookListenersAtIndex(x);
+}
+}
+}
 ///end unhilite all
 
 var searchRange = doc.createRange();
@@ -101,7 +123,7 @@ while (retRange = finder.Find(text, searchRange, startPt, endPt)) {
     //console.log('retRange(' + i + ') = ', retRange);
     //console.log('var txt = retRange.commonAncestorContainer.data',retRange.commonAncestorContainer.data);
     
-	_highlightRange(retRange, ctrler);
+	_highlightRange(retRange, ctrler, _editors);
     
     //break;
     startPt = retRange.cloneRange();
@@ -110,9 +132,6 @@ while (retRange = finder.Find(text, searchRange, startPt, endPt)) {
  }
 
 /*stuff jacked straight from Finder.jsm*/
-var _editors;
-var _stateListeners;
-
 function _getEditableNode(aNode) {
     while (aNode) {
       if (aNode instanceof Ci.nsIDOMNSEditableElement)
@@ -123,7 +142,7 @@ function _getEditableNode(aNode) {
     return null;
   }
   
-function _highlightRange(aRange, aController) {
+function _highlightRange(aRange, aController, _editors) {
     let node = aRange.startContainer;
     let controller = aController;
 
@@ -134,25 +153,22 @@ function _highlightRange(aRange, aController) {
     let findSelection = controller.getSelection(Ci.nsISelectionController.SELECTION_FIND);
     findSelection.addRange(aRange);
     //i dont understand stateListener stuff
-    /*
+    
     if (editableNode) {
       // Highlighting added, so cache this editor, and hook up listeners
       // to ensure we deal properly with edits within the highlighting
-      if (!_editors) {
-        _editors = [];
-        _stateListeners = [];
-      }
 
       let existingIndex = _editors.indexOf(editableNode.editor);
+	  existingIndex = -1;
       if (existingIndex == -1) {
         let x = _editors.length;
         _editors[x] = editableNode.editor;
-        _stateListeners[x] = _createStateListener();
-        _editors[x].addEditActionListener(this);
-        _editors[x].addDocumentStateListener(_stateListeners[x]);
+        //_stateListeners[x] = _createStateListener();
+        //_editors[x].addEditActionListener(this);
+        //_editors[x].addDocumentStateListener(_stateListeners[x]);
       }
     }
-    */
+    
   }
 
   function _getSelectionController(aWindow) {
@@ -203,7 +219,9 @@ function addSelectionListener(win) {
 	win = win.top;
 	var selectionObj = win.getSelection();
 	if (selectionObj) {
-		selectionObj.QueryInterface(Ci.nsISelectionPrivate).addSelectionListener(selectionListener);
+		var listenerForThisWin = new selectionListener;
+		selectionObj.QueryInterface(Ci.nsISelectionPrivate).addSelectionListener(listenerForThisWin);
+		addedListeners.push([win, listenerForThisWin]);
 	} else {
 		console().warn('did not add to this window as selectionObj is null', selectionObj);
 	}
@@ -262,6 +280,26 @@ var windowListener = {
 			windowListener.unloadFromWindow(aDOMWindow, aXULWindow);
 		}
 		//Stop listening so future added windows dont get this attached
+		[].forEach.call(addedListeners, function(listener) {
+			//listener[0] == win
+			//listener[1] == new selectionListener
+			console().log('going through addedListeners, currently on win=',listener[0]);
+			try {
+				var selectionObj = listener[0].getSelection();
+				if (selectionObj) {
+					selectionObj.QueryInterface(Ci.nsISelectionPrivate).removeSelectionListener(listener[1]);
+					//unhilite any hilites that were there
+					var ctrler = _getSelectionController(listener[0]);
+					let sel = ctrler.getSelection(Ci.nsISelectionController.SELECTION_FIND);
+					sel.removeAllRanges();
+				} else {
+					console().warn('did not REMOVE from this window as selectionObj is null', selectionObj, 'here is the listener[1]',listener[1]);
+				}
+			} catch(ex) {
+				console().warn('exception while removing selectionListener=',ex);
+			}
+		});
+		
 		Services.wm.removeListener(windowListener);
 	},
 	//END - DO NOT EDIT HERE
@@ -297,6 +335,7 @@ var windowListener = {
 		}
 		if (aDOMWindow.gBrowser) {
 			aDOMWindow.gBrowser.removeEventListener('DOMContentLoaded', listenPageLoad, false);
+			return; //no longer doing the bottom as dealing with constuctor now
 			if (aDOMWindow.gBrowser.tabContainer) {
 				//has tabContainer
 				//start - go through all tabs in this window we just added to
