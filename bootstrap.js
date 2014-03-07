@@ -11,12 +11,17 @@ Cu.import('resource://gre/modules/Services.jsm');
 Cu.import('resource://gre/modules/XPCOMUtils.jsm');
 XPCOMUtils.defineLazyGetter(myServices, 'as', function(){ return Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService) });
 
+function console() {
+	return Services.appShell.hiddenDOMWindow.console;
+}
+
  var selectionListener = {
    timeout: 0,
    timeoutWin: 0,
    notifySelectionChanged: function(doc, sel, reason)
    {
 		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) {
+			
 			return;
 		}
 		
@@ -45,19 +50,29 @@ XPCOMUtils.defineLazyGetter(myServices, 'as', function(){ return Cc['@mozilla.or
 	win = win.top;
 	
 	//clear any present highlighting
+	/*
 	var DOMWin = win.QueryInterface(Ci.nsIInterfaceRequestor)
 					.getInterface(Ci.nsIWebNavigation)
 					.QueryInterface(Ci.nsIDocShellTreeItem)
 					.rootTreeItem
 					.QueryInterface(Ci.nsIInterfaceRequestor)
 					.getInterface(Ci.nsIDOMWindow);
-	var tab = DOMWin.gBrowser._getTabForWindow(win);
+	var tab = DOMWin.gBrowser._getTabForContentWindow(win);
 	var findbar = tab._findBar;
-	findbar.toggleHighlight(false);
+	if (findbar) {
+		findbar.toggleHighlight(false);
+	}
+	*/
+	
 	
 	var doc = win.document;
 	
 var ctrler = _getSelectionController(win);
+
+////unighlight alll
+let sel = ctrler.getSelection(Ci.nsISelectionController.SELECTION_FIND);
+sel.removeAllRanges();
+///end unhilite all
 
 var searchRange = doc.createRange();
 if (doc.body) {
@@ -78,7 +93,7 @@ let retRange = null;
 let finder = Cc["@mozilla.org/embedcomp/rangefind;1"].createInstance().QueryInterface(Ci.nsIFind);
 finder.caseSensitive = false;
 //var i = 0;
-while (retRange = finder.Find('the', searchRange, startPt, endPt)) {
+while (retRange = finder.Find(text, searchRange, startPt, endPt)) {
     //i++;
     //var stCont = retRange.startContainer;
     //var endCont = retRange.endContainer;
@@ -188,9 +203,9 @@ function addSelectionListener(win) {
 	win = win.top;
 	var selectionObj = win.getSelection();
 	if (selectionObj) {
-		win.getSelection().QueryInterface(Ci.nsISelectionPrivate).addSelectionListener(selectionListener);
+		selectionObj.QueryInterface(Ci.nsISelectionPrivate).addSelectionListener(selectionListener);
 	} else {
-		Services.appShell.hiddenDOMWindow.console.warn('did not add to this window as selectionObj is null', selectionObj);
+		console().warn('did not add to this window as selectionObj is null', selectionObj);
 	}
 }
 
@@ -199,9 +214,9 @@ function removeSelectionListener(win) {
 	win = win.top;
 	var selectionObj = win.getSelection();
 	if (selectionObj) {
-		win.getSelection().QueryInterface(Ci.nsISelectionPrivate).removeSelectionListener(selectionListener);
+		selectionObj.QueryInterface(Ci.nsISelectionPrivate).removeSelectionListener(selectionListener);
 	} else {
-		Services.appShell.hiddenDOMWindow.console.warn('did not add to this window as selectionObj is null', selectionObj);
+		console().warn('did not add to this window as selectionObj is null', selectionObj);
 	}
 }
 

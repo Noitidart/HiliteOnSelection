@@ -20,9 +20,10 @@
 		</em:targetApplication>
 
 		<!-- Front End MetaData -->
-		<em:name>Bootstrap Skeleton</em:name>
+		<em:name>HiliteOnSelection</em:name>
 		<em:description>Whatever you select is highlighted throughout the document.</em:description>
 		<em:creator>Noitidart</em:creator>
 		<em:contributor>Woothemes for Icon</em:contributor>
+		<em:contributor>C graphics for Idea</em:contributor>
 	  </Description>
 	</RDF>
