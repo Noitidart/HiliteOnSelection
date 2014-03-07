@@ -6,18 +6,12 @@ const self = {
 	aData: 0,
 };
 
-const myServices = {};
 Cu.import('resource://gre/modules/Services.jsm');
-Cu.import('resource://gre/modules/XPCOMUtils.jsm');
-XPCOMUtils.defineLazyGetter(myServices, 'as', function(){ return Cc['@mozilla.org/alerts-service;1'].getService(Ci.nsIAlertsService) });
-
 var addedListeners = [];
 
 function console() {
 	return Services.appShell.hiddenDOMWindow.console;
 }
-
-
 
 function selectionListener(win) {
 	this.timeout = 0;
@@ -38,7 +32,7 @@ function selectionListener(win) {
            }		
        if (this.timeout === 0) {
 			this.win = doc.defaultView;
-			console().log('set this.win',this.win,'doc.defaultView=',doc.defaultView);
+			//console().log('set this.win',this.win,'doc.defaultView=',doc.defaultView);
            this.timeout = this.win.setTimeout(postTimeout.bind(this), 1000);
        } else {
 			this.win.clearTimeout(this.timeout);
@@ -223,7 +217,7 @@ function addSelectionListener(win) {
 		selectionObj.QueryInterface(Ci.nsISelectionPrivate).addSelectionListener(listenerForThisWin);
 		addedListeners.push([win, listenerForThisWin]);
 	} else {
-		console().warn('did not add to this window as selectionObj is null', selectionObj);
+		//console().warn('did not add to this window as selectionObj is null', selectionObj);
 	}
 }
 
@@ -234,7 +228,7 @@ function removeSelectionListener(win) {
 	if (selectionObj) {
 		selectionObj.QueryInterface(Ci.nsISelectionPrivate).removeSelectionListener(selectionListener);
 	} else {
-		console().warn('did not add to this window as selectionObj is null', selectionObj);
+		//console().warn('did not add to this window as selectionObj is null', selectionObj);
 	}
 }
 
@@ -283,7 +277,7 @@ var windowListener = {
 		[].forEach.call(addedListeners, function(listener) {
 			//listener[0] == win
 			//listener[1] == new selectionListener
-			console().log('going through addedListeners, currently on win=',listener[0]);
+			//console().log('going through addedListeners, currently on win=',listener[0]);
 			try {
 				var selectionObj = listener[0].getSelection();
 				if (selectionObj) {
@@ -293,10 +287,10 @@ var windowListener = {
 					let sel = ctrler.getSelection(Ci.nsISelectionController.SELECTION_FIND);
 					sel.removeAllRanges();
 				} else {
-					console().warn('did not REMOVE from this window as selectionObj is null', selectionObj, 'here is the listener[1]',listener[1]);
+					//console().warn('did not REMOVE from this window as selectionObj is null', selectionObj, 'here is the listener[1]',listener[1]);
 				}
 			} catch(ex) {
-				console().warn('exception while removing selectionListener=',ex);
+				//console().warn('exception while removing selectionListener=',ex);
 			}
 		});
 		
