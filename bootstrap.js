@@ -20,7 +20,7 @@ function selectionListener(win) {
 	this._stateListeners = [];
    this.notifySelectionChanged = function(doc, sel, reason)
    {
-		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) {
+		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) || /^\s+$/.test(sel.toString()) {
 			
 			return;
 		}
