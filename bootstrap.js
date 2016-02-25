@@ -9,10 +9,6 @@ const self = {
 Cu.import('resource://gre/modules/Services.jsm');
 var addedListeners = [];
 
-function console() {
-	return Services.appShell.hiddenDOMWindow.console;
-}
-
 function selectionListener(win) {
 	this.timeout = 0;
 	this.win = 0;
@@ -20,14 +16,16 @@ function selectionListener(win) {
 	this._stateListeners = [];
    this.notifySelectionChanged = function(doc, sel, reason)
    {
-		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) || /^\s+$/.test(sel.toString()) {
+		if (reason == Ci.nsISelectionListener.SELECTALL_REASON) {
 			
 			return;
 		}
 
 		var postTimeout = function() {
                //console.log('notifySelectionChanged','doc=',doc,'sel=',sel,'reason=',reason);
-			   hiliteAllSel(this.win, sel.toString(), this._editors);
+			   if (!/^\s+$/m.test(sel.toString())) {
+				hiliteAllSel(this.win, sel.toString(), this._editors);
+			   }
                this.timeout = 0;
            }		
        if (this.timeout === 0) {
