@@ -2,6 +2,7 @@ var t = '';
 var isMarked = 0;
 function gText(e) {
 	if (e.button !== 0) return;
+	// if (!e.ctrlKey) return;
 
     // var sel = (document.all) ? document.selection.createRange().text : document.getSelection();
     var sel = document.getSelection();
@@ -9,12 +10,14 @@ function gText(e) {
 	if (new_t != t) {
 		t = new_t;
 		if (isMarked) {
+			console.log('unmarking because isMarked:', isMarked);
 			markInstance.unmark();
+			isMarked = 0;
 		}
 
 		console.log('t:', t);
 
-		if (t.length) {
+		if (t.length > 1) {
 			console.log('making now');
 
 			// Determine selected options
@@ -34,9 +37,7 @@ function gText(e) {
 
 		    // Remove previous marked elements and mark
 		    // the new keyword inside the context
-		    markInstance.mark(t, options);
-
-			console.log('maked');
+		    markInstance.mark(t.substr(0, t.length-1), options);
 		}
 	}
 
