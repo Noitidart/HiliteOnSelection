@@ -56,7 +56,7 @@ if (!document.all) document.captureEvents(Event.MOUSEUP);
 // the DOM object of the context (where to search for matches)
 var markInstance = new Mark(document.documentElement);
 
-
+// http://stackoverflow.com/a/17694760/1828637
 var saveSelection, restoreSelection;
 
 if (window.getSelection && document.createRange) {
