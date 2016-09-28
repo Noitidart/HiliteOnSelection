@@ -17,7 +17,7 @@ function gText(e) {
 
 		console.log('t:', t);
 
-		if (t.length) {
+		if (t.length > 1) {
 			var savedSel = saveSelection(document.documentElement);
 			console.log('making now');
 
