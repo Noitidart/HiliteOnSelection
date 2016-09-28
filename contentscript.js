@@ -17,7 +17,8 @@ function gText(e) {
 
 		console.log('t:', t);
 
-		if (t.length > 1) {
+		if (t.length) {
+			var savedSel = saveSelection(document.documentElement);
 			console.log('making now');
 
 			// Determine selected options
@@ -32,12 +33,13 @@ function gText(e) {
 			  done: function(cnt) {
 				  isMarked = cnt;
 				  console.log('isMarked:', cnt);
+				  restoreSelection(document.documentElement, savedSel);
 			  }
 		  }
 
 		    // Remove previous marked elements and mark
 		    // the new keyword inside the context
-		    markInstance.mark(t.substr(0, t.length-1), options);
+		    markInstance.mark(t.substr(0, t.length), options);
 		}
 	}
 
@@ -53,3 +55,78 @@ if (!document.all) document.captureEvents(Event.MOUSEUP);
 // Create an instance of mark.js and pass an argument containing
 // the DOM object of the context (where to search for matches)
 var markInstance = new Mark(document.documentElement);
+
+
+var saveSelection, restoreSelection;
+
+if (window.getSelection && document.createRange) {
+    saveSelection = function(containerEl) {
+        var doc = containerEl.ownerDocument, win = doc.defaultView;
+        var range = win.getSelection().getRangeAt(0);
+        var preSelectionRange = range.cloneRange();
+        preSelectionRange.selectNodeContents(containerEl);
+        preSelectionRange.setEnd(range.startContainer, range.startOffset);
+        var start = preSelectionRange.toString().length;
+
+        return {
+            start: start,
+            end: start + range.toString().length
+        }
+    };
+
+    restoreSelection = function(containerEl, savedSel) {
+        var doc = containerEl.ownerDocument, win = doc.defaultView;
+        var charIndex = 0, range = doc.createRange();
+        range.setStart(containerEl, 0);
+        range.collapse(true);
+        var nodeStack = [containerEl], node, foundStart = false, stop = false;
+
+        while (!stop && (node = nodeStack.pop())) {
+            if (node.nodeType == 3) {
+                var nextCharIndex = charIndex + node.length;
+                if (!foundStart && savedSel.start >= charIndex && savedSel.start <= nextCharIndex) {
+                    range.setStart(node, savedSel.start - charIndex);
+                    foundStart = true;
+                }
+                if (foundStart && savedSel.end >= charIndex && savedSel.end <= nextCharIndex) {
+                    range.setEnd(node, savedSel.end - charIndex);
+                    stop = true;
+                }
+                charIndex = nextCharIndex;
+            } else {
+                var i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+
+        var sel = win.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+} else if (document.selection) {
+    saveSelection = function(containerEl) {
+        var doc = containerEl.ownerDocument, win = doc.defaultView || doc.parentWindow;
+        var selectedTextRange = doc.selection.createRange();
+        var preSelectionTextRange = doc.body.createTextRange();
+        preSelectionTextRange.moveToElementText(containerEl);
+        preSelectionTextRange.setEndPoint("EndToStart", selectedTextRange);
+        var start = preSelectionTextRange.text.length;
+
+        return {
+            start: start,
+            end: start + selectedTextRange.text.length
+        }
+    };
+
+    restoreSelection = function(containerEl, savedSel) {
+        var doc = containerEl.ownerDocument, win = doc.defaultView || doc.parentWindow;
+        var textRange = doc.body.createTextRange();
+        textRange.moveToElementText(containerEl);
+        textRange.collapse(true);
+        textRange.moveEnd("character", savedSel.end);
+        textRange.moveStart("character", savedSel.start);
+        textRange.select();
+    };
+}
